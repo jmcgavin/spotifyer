@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Promise from 'bluebird'
 import { PageHeader, ResultDataTable, Spinner } from '../../components'
-import type { LocalFileMetadata, SpotifyTracksForLocalFile } from '../../types'
+import type { LocalFileMetadata, ResultsCount, ResultsFilter, SpotifyTracksForLocalFile } from '../../types'
 import { SpotifyPlaylist, SpotifyUser, addToPlaylist, createPlaylist, getPlaylists, searchTracks } from '../../api'
 import { useLocalStorage } from '../../hooks'
 import { LOCALSTORAGE_KEYS } from '../../constants'
@@ -14,6 +14,14 @@ import {
 } from '../../helpers'
 import { Autocomplete, Box, Button, TextField, Tooltip } from '@mui/material'
 import { LibraryAdd } from '@mui/icons-material'
+import { ResultsFilterSelect } from '../../components/ResultsFilterSelect'
+
+const initialResultsCount: ResultsCount = {
+  all: 0,
+  likely: 0,
+  unlikely: 0,
+  none: 0
+}
 
 type Props = {
   data: LocalFileMetadata[]
@@ -22,18 +30,13 @@ type Props = {
 
 export const SearchResults = ({ data, user }: Props) => {
   const [accessToken] = useLocalStorage(LOCALSTORAGE_KEYS.SPOTIFY_ACCESS_TOKEN, '')
-  const [isLoading, setIsLoading] = useState<boolean>(true)
-  const [countdownExpired, setCountdownExpired] = useState<boolean>(false)
-  const [results, setResults] = useState<SpotifyTracksForLocalFile[]>([])
+  const [allResults, setAllResults] = useState<SpotifyTracksForLocalFile[]>([])
+  const [filteredResults, setFilteredResults] = useState<SpotifyTracksForLocalFile[]>([])
+  const [resultsFilter, setResultsFilter] = useState<ResultsFilter>('all')
+  const [resultsCount, setResultsCount] = useState<ResultsCount>(initialResultsCount)
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([])
   const [selectedResults, setSelectedResults] = useState<SpotifyTracksForLocalFile[]>([])
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>()
-
-  useEffect(() => {
-    setTimeout(() => {
-      setCountdownExpired(true)
-    }, 1000)
-  }, [])
 
   useEffect(() => {
     const fetchPlaylists = async () => {
@@ -64,10 +67,20 @@ export const SearchResults = ({ data, user }: Props) => {
             spotifyTracks: tracks.map(track => filterSpotifyTrackInfo(track)),
             bestMatch: findBestMatch(data, tracks.map(track => filterSpotifyTrackInfo(track)))
           })
-      }, { concurrency: 5 })
-      setResults(searchResults)
-      setSelectedResults(searchResults.filter(result => goodMatchThreshold(result)))
-      setIsLoading(false)
+        }, { concurrency: 5 })
+
+        const resultsCount = searchResults.reduce((acc, curr) => {
+          acc.all = acc.all + 1
+          if (goodMatchThreshold(curr)) acc.likely =  acc.likely + 1
+          else if (!curr.bestMatch) acc.none = acc.none + 1
+          else acc.unlikely = acc.unlikely + 1
+          return acc
+        }, initialResultsCount)
+    
+        setAllResults(searchResults)
+        setFilteredResults(searchResults)
+        setResultsCount(resultsCount)
+        setSelectedResults(searchResults.filter(result => goodMatchThreshold(result)))
       })()
     }
   }, [accessToken, data])
@@ -94,6 +107,16 @@ export const SearchResults = ({ data, user }: Props) => {
     }
   }
 
+  const filterResults = (filter: ResultsFilter) => {
+    setResultsFilter(filter)
+    switch (filter) {
+      case 'all': return setFilteredResults(allResults)
+      case 'likely': return setFilteredResults(allResults.filter(result => goodMatchThreshold(result)))
+      case 'unlikely': return setFilteredResults(allResults.filter(result => result.bestMatch && !goodMatchThreshold(result)))
+      case 'none': return setFilteredResults(allResults.filter(result => !result.bestMatch))
+    }
+  }
+
   return (
     <>
       <PageHeader
@@ -103,20 +126,21 @@ export const SearchResults = ({ data, user }: Props) => {
           <Autocomplete
             key="playlistSelect"
             freeSolo
+            autoSelect
             onChange={(_e, value) => setSelectedPlaylist(value)}
             size='small'
-            disabled={isLoading || !countdownExpired || !results.length}
+            disabled={!allResults.length}
             sx={{ width: 300 }}
             options={playlists.map(playlist => playlist.name)}
             renderInput={(params) =>
               <TextField {...params} label="Select or create a playlist" />
             }
           />,
-          <Tooltip key='addToSpotify' title={!selectedPlaylist ? 'A playlist must be selected.' : ''}>
+          <Tooltip key='addToSpotify' title={!selectedPlaylist ? 'A playlist must be selected.' : !selectedResults.length ? 'At least one search result must be selected.' : ''}>
             <span>
               <Button
                 key="addToSpotify"
-                disabled={isLoading || !countdownExpired || !results.length || !selectedPlaylist}
+                disabled={!selectedResults.length || !selectedPlaylist}
                 // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 onClick={addToSpotify}
                 variant="contained"
@@ -128,19 +152,20 @@ export const SearchResults = ({ data, user }: Props) => {
           </Tooltip>
         ]}
       />
-      {isLoading || !countdownExpired &&
-        <Box sx={{ display: 'flex', flexFlow: 'column', alignItems: 'center', gap: '12px' }}>
-          <Spinner />
-          Searching Spotify...
-        </Box>
-      }
-      {!isLoading && countdownExpired && results.length &&
+      {allResults.length ?
         <>
-        <p style={{ textAlign: 'end' }}>
-          {selectedResults.length} of {results.length} selected
-        </p>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'auto 1fr', marginBottom: '24px' }}>
+            <ResultsFilterSelect
+              resultsCount={resultsCount}
+              selected={resultsFilter}
+              onSelect={filterResults}
+            />
+            <p style={{ alignSelf: 'end', textAlign: 'end', margin: 0 }}>
+              {selectedResults.length} of {allResults.length} selected
+            </p>
+          </Box>
           <Box sx={{ display: 'flex', flexFlow: 'column', gap: '24px' }}>
-            {results.map(result =>
+            {filteredResults.map(result =>
               <ResultDataTable
                 key={result.localFileMetadata.id}
                 data={result}
@@ -153,6 +178,11 @@ export const SearchResults = ({ data, user }: Props) => {
             )}
           </Box>
         </>
+        :
+        <Box sx={{ display: 'flex', flexFlow: 'column', alignItems: 'center', gap: '12px' }}>
+          <Spinner />
+          Searching Spotify...
+        </Box>
       }
     </>
   )

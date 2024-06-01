@@ -75,6 +75,7 @@ export const requestAccessToken = async (code: string) => {
   localStorage.setItem(LOCALSTORAGE_KEYS.SPOTIFY_ACCESS_TOKEN, data.access_token)
   localStorage.setItem(LOCALSTORAGE_KEYS.SPOTIFY_REFRESH_TOKEN, data.refresh_token)
   localStorage.removeItem(LOCALSTORAGE_KEYS.SPOTIFY_CODE_VERIFIER)
+  return data.access_token
 }
 
 /**

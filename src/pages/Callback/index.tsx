@@ -59,26 +59,19 @@ export const Callback = ({ user, setUser }: Props) => {
     if (authorizationCode) {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       (async () => {
-        await requestAccessToken(authorizationCode)
+        const accessToken = await requestAccessToken(authorizationCode)
+        const user = await getUser(accessToken)
+        setUser(user)
       })()
-    }
-  }, [])
-
-  useEffect(() => {
-    if (accessToken) {
+    } else {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       (async () => {
         const user = await getUser(accessToken)
         setUser(user)
       })()
     }
-  }, [accessToken, setUser])
-
-  useEffect(() => {
-    if (user) {
-      setTimeout(() => navigate(ROUTES.TRACK_SELECTION, { replace: true }), 5500)
-    }
-  }, [navigate, user])
+    setTimeout(() => navigate(ROUTES.TRACK_SELECTION, { replace: true }), 5500)
+  }, [accessToken, navigate, setUser])
 
   return (
     <Container>
