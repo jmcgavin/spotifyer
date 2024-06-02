@@ -29,7 +29,7 @@ export type SpotifyTracksForLocalFile = {
   bestMatch: BestMatch
 }
 
-export type ResultsFilter = 'all' | 'likely' | 'unlikely' | 'none'
+export type ResultsFilter = 'all' | 'confident' | 'likely' | 'none'
 
 export type ResultsCount = {
   [key in ResultsFilter]: number

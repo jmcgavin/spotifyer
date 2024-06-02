@@ -1,4 +1,4 @@
-import { ChangeEvent, Dispatch, SetStateAction, useRef } from 'react'
+import { Dispatch, SetStateAction, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, Tooltip } from '@mui/material'
 import { LibraryMusic } from '@mui/icons-material'
@@ -18,8 +18,7 @@ export const TrackSelection = ({ data, onSetData }: Props) => {
   const navigate = useNavigate()
   const inputFile = useRef<HTMLInputElement | null>(null)
 
-  const handleInputFile = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files || []
+  const handleInputFiles = async (files: FileList | File[] = []) => {
     const parsedData = []
 
     for (const file of files) {
@@ -52,7 +51,7 @@ export const TrackSelection = ({ data, onSetData }: Props) => {
               color="secondary"
               startIcon={<LibraryMusic />}
             >
-              Browse files
+              Browse audio files
             </Button>
           </Tooltip>,
           <Tooltip
@@ -80,13 +79,14 @@ export const TrackSelection = ({ data, onSetData }: Props) => {
         ]}
       />
 
-      <TracksDataTable data={data} />
+      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+      <TracksDataTable data={data} onReceiveFiles={handleInputFiles} />
 
       <input
         style={{ display: 'none' }}
         ref={inputFile}
         // eslint-disable-next-line @typescript-eslint/no-misused-promises
-        onChange={handleInputFile}
+        onChange={(e) => handleInputFiles(e.target.files || [])}
         type="file"
         accept="audio/*"
         multiple

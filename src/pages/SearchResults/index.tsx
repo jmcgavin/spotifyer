@@ -10,7 +10,7 @@ import {
   filterLocalMetadataTrackTitle,
   filterSpotifyTrackInfo,
   findBestMatch,
-  goodMatchThreshold
+  confidentMatchThreshold
 } from '../../helpers'
 import { Autocomplete, Box, Button, TextField, Tooltip } from '@mui/material'
 import { LibraryAdd } from '@mui/icons-material'
@@ -18,8 +18,8 @@ import { ResultsFilterSelect } from '../../components/ResultsFilterSelect'
 
 const initialResultsCount: ResultsCount = {
   all: 0,
+  confident: 0,
   likely: 0,
-  unlikely: 0,
   none: 0
 }
 
@@ -71,16 +71,21 @@ export const SearchResults = ({ data, user }: Props) => {
 
         const resultsCount = searchResults.reduce((acc, curr) => {
           acc.all = acc.all + 1
-          if (goodMatchThreshold(curr)) acc.likely =  acc.likely + 1
+          if (confidentMatchThreshold(curr)) acc.confident =  acc.confident + 1
           else if (!curr.bestMatch) acc.none = acc.none + 1
-          else acc.unlikely = acc.unlikely + 1
+          else acc.likely = acc.likely + 1
           return acc
-        }, initialResultsCount)
+        }, {
+          all: 0,
+          confident: 0,
+          likely: 0,
+          none: 0
+        })
     
         setAllResults(searchResults)
         setFilteredResults(searchResults)
         setResultsCount(resultsCount)
-        setSelectedResults(searchResults.filter(result => goodMatchThreshold(result)))
+        setSelectedResults(searchResults.filter(result => confidentMatchThreshold(result)))
       })()
     }
   }, [accessToken, data])
@@ -111,8 +116,8 @@ export const SearchResults = ({ data, user }: Props) => {
     setResultsFilter(filter)
     switch (filter) {
       case 'all': return setFilteredResults(allResults)
-      case 'likely': return setFilteredResults(allResults.filter(result => goodMatchThreshold(result)))
-      case 'unlikely': return setFilteredResults(allResults.filter(result => result.bestMatch && !goodMatchThreshold(result)))
+      case 'confident': return setFilteredResults(allResults.filter(result => confidentMatchThreshold(result)))
+      case 'likely': return setFilteredResults(allResults.filter(result => result.bestMatch && !confidentMatchThreshold(result)))
       case 'none': return setFilteredResults(allResults.filter(result => !result.bestMatch))
     }
   }
@@ -173,7 +178,7 @@ export const SearchResults = ({ data, user }: Props) => {
                 selected={selectedResults.findIndex(selectedResults =>
                   selectedResults.localFileMetadata.id === result.localFileMetadata.id) >= 0
                 }
-                status={!result.bestMatch ? 'error' : goodMatchThreshold(result) ? 'success' : 'warning'}
+                status={!result.bestMatch ? 'error' : confidentMatchThreshold(result) ? 'success' : 'warning'}
               />
             )}
           </Box>

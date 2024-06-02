@@ -15,10 +15,10 @@ const ColorBadge = styled.div`
   border-radius: 50%;
   margin-right: 8px;
 
-  &.likely {
+  &.confident {
     background-color: var(--mui-palette-success-main);
   }
-  &.unlikely {
+  &.likely {
     background-color: var(--mui-palette-warning-main);
   }
   &.none {
@@ -33,22 +33,22 @@ export const ResultsFilterSelect = ({
 }: Props) => {
   return (
     <Select
-      sx={{ minWidth: '200px' }}
+      sx={{ minWidth: '230px' }}
       size='small'
       value={selected}
       onChange={(e) => onSelect(e.target.value as ResultsFilter)}
     >
       <MenuItem value='all'>All results ({resultsCount.all})</MenuItem>
+      <MenuItem value='confident' disabled={!resultsCount.confident}>
+        <ColorBadge className='confident'/>
+        Confident matches ({resultsCount.confident})</MenuItem>
       <MenuItem value='likely' disabled={!resultsCount.likely}>
         <ColorBadge className='likely'/>
-        Likely results ({resultsCount.likely})</MenuItem>
-      <MenuItem value='unlikely' disabled={!resultsCount.unlikely}>
-        <ColorBadge className='unlikely'/>
-        Unlikely results ({resultsCount.unlikely})
+        Likely matches ({resultsCount.likely})
       </MenuItem>
       <MenuItem value='none' disabled={!resultsCount.none}>
         <ColorBadge className='none'/>
-        No results ({resultsCount.none})
+        No matches ({resultsCount.none})
       </MenuItem>
     </Select>
   )

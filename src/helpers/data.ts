@@ -100,6 +100,6 @@ export const findBestMatch = (
 /**
  * Check if a result meets the threshold to be considered a good match
  */
-export const goodMatchThreshold = (result: SpotifyTracksForLocalFile) => {
+export const confidentMatchThreshold = (result: SpotifyTracksForLocalFile) => {
   return !!result.bestMatch && result.bestMatch.differenceScore <= RESULT_INNACURACY_THRESHOLD
 }
