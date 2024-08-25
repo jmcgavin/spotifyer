@@ -27,10 +27,8 @@ export type SpotifyTracksForLocalFile = {
   localFileMetadata: LocalFileMetadata
   spotifyTracks: FilteredSpotifyTrack[]
   bestMatch: BestMatch
+  matchType: MatchType
 }
 
-export type ResultsFilter = 'all' | 'confident' | 'likely' | 'none'
+export type MatchType = 'confident' | 'likely' | 'none'
 
-export type ResultsCount = {
-  [key in ResultsFilter]: number
-}

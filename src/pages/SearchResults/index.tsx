@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Promise from 'bluebird'
 import { PageHeader, ResultDataTable, Spinner } from '../../components'
-import type { LocalFileMetadata, ResultsCount, ResultsFilter, SpotifyTracksForLocalFile } from '../../types'
+import type { LocalFileMetadata, MatchType, SpotifyTracksForLocalFile } from '../../types'
 import { SpotifyPlaylist, SpotifyUser, addToPlaylist, createPlaylist, getPlaylists, searchTracks } from '../../api'
 import { useLocalStorage } from '../../hooks'
 import { LOCALSTORAGE_KEYS } from '../../constants'
@@ -10,39 +10,33 @@ import {
   filterLocalMetadataTrackTitle,
   filterSpotifyTrackInfo,
   findBestMatch,
-  confidentMatchThreshold
+  getMatchType,
+  meetsConfidentMatchThreshold
 } from '../../helpers'
 import { Autocomplete, Box, Button, TextField, Tooltip } from '@mui/material'
 import { LibraryAdd } from '@mui/icons-material'
 import { ResultsFilterSelect } from '../../components/ResultsFilterSelect'
 
-const initialResultsCount: ResultsCount = {
-  all: 0,
-  confident: 0,
-  likely: 0,
-  none: 0
-}
-
 type Props = {
   data: LocalFileMetadata[]
-  user: SpotifyUser | undefined
+  user: SpotifyUser
 }
 
 export const SearchResults = ({ data, user }: Props) => {
   const [accessToken] = useLocalStorage(LOCALSTORAGE_KEYS.SPOTIFY_ACCESS_TOKEN, '')
+  const [allPlaylists, setAllPlaylists] = useState<SpotifyPlaylist[]>([])
   const [allResults, setAllResults] = useState<SpotifyTracksForLocalFile[]>([])
-  const [filteredResults, setFilteredResults] = useState<SpotifyTracksForLocalFile[]>([])
-  const [resultsFilter, setResultsFilter] = useState<ResultsFilter>('all')
-  const [resultsCount, setResultsCount] = useState<ResultsCount>(initialResultsCount)
-  const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([])
-  const [selectedResults, setSelectedResults] = useState<SpotifyTracksForLocalFile[]>([])
-  const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>()
+  const [allSelections, setAllSelections] = useState<SpotifyTracksForLocalFile[]>([])
+  const [resultsFilter, setResultsFilter] = useState<MatchType | 'all'>('all')
+  const [selectedPlaylist, setSelectedPlaylist] = useState<string>()
 
   useEffect(() => {
     const fetchPlaylists = async () => {
       const playlists = await getPlaylists(accessToken)
-      const filteredPlaylists = playlists.filter(playlist => playlist.owner.id === user?.id || playlist.collaborative)
-      setPlaylists(filteredPlaylists)
+      const filteredPlaylists = playlists
+        .filter(playlist => playlist.owner.id === user?.id || playlist.collaborative)
+        .sort((a, b) => a.name.localeCompare(b.name))
+      setAllPlaylists(filteredPlaylists)
     }
 
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -62,45 +56,42 @@ export const SearchResults = ({ data, user }: Props) => {
             accessToken
           })
 
+          const bestMatch = findBestMatch(data, tracks.map(track => filterSpotifyTrackInfo(track)))
+
           searchResults.push({
             localFileMetadata: data,
             spotifyTracks: tracks.map(track => filterSpotifyTrackInfo(track)),
-            bestMatch: findBestMatch(data, tracks.map(track => filterSpotifyTrackInfo(track)))
+            bestMatch,
+            matchType: getMatchType(bestMatch)
           })
         }, { concurrency: 5 })
 
-        const resultsCount = searchResults.reduce((acc, curr) => {
-          acc.all = acc.all + 1
-          if (confidentMatchThreshold(curr)) acc.confident =  acc.confident + 1
-          else if (!curr.bestMatch) acc.none = acc.none + 1
-          else acc.likely = acc.likely + 1
-          return acc
-        }, {
-          all: 0,
-          confident: 0,
-          likely: 0,
-          none: 0
-        })
-    
         setAllResults(searchResults)
-        setFilteredResults(searchResults)
-        setResultsCount(resultsCount)
-        setSelectedResults(searchResults.filter(result => confidentMatchThreshold(result)))
+        setAllSelections(searchResults.filter(result => result.matchType === 'confident'))
       })()
     }
   }, [accessToken, data])
 
-  const updatedSelected = (data:SpotifyTracksForLocalFile, selected:boolean) => {
+  /**
+   * Toggle a selection
+   * @param {SpotifyTracksForLocalFile} data Track to select/deselect
+   * @param {boolean} selected Is the result selected?
+   */
+  const handleSelection = (data:SpotifyTracksForLocalFile, selected:boolean) => {
     if (selected) {
-      setSelectedResults([...selectedResults, data])
+      setAllSelections([...allSelections, data])
     } else {
-      setSelectedResults(selectedResults.filter(result => result.localFileMetadata.id !== data.localFileMetadata.id))
+      setAllSelections(allSelections.filter(result => result.localFileMetadata.id !== data.localFileMetadata.id))
     }
   }
 
+  /**
+   * Add the selected results to the selected playlist on Spotify
+   * @async
+   */
   const addToSpotify = async () => {
-    const spotifyTrackUris = selectedResults.map(result => result.spotifyTracks[result.bestMatch!.index].spotify_uri)
-    const existingPlaylist = playlists.find(playlist => playlist.name === selectedPlaylist)
+    const spotifyTrackUris = allSelections.map(result => result.spotifyTracks[result.bestMatch!.index].spotify_uri)
+    const existingPlaylist = allPlaylists.find(playlist => playlist.name === selectedPlaylist)
 
     if (!existingPlaylist) {
       // Create new playlist
@@ -112,13 +103,18 @@ export const SearchResults = ({ data, user }: Props) => {
     }
   }
 
-  const filterResults = (filter: ResultsFilter) => {
+  /**
+   * Filter displayed results according to their confident match threshold.
+   * @param {ResultsFilter} filter 
+   * @returns 
+   */
+  const filterResults = (filter: MatchType) => {
     setResultsFilter(filter)
     switch (filter) {
-      case 'all': return setFilteredResults(allResults)
-      case 'confident': return setFilteredResults(allResults.filter(result => confidentMatchThreshold(result)))
-      case 'likely': return setFilteredResults(allResults.filter(result => result.bestMatch && !confidentMatchThreshold(result)))
-      case 'none': return setFilteredResults(allResults.filter(result => !result.bestMatch))
+      case 'confident': return allResults.filter(result => result.matchType === 'confident')
+      case 'likely': return allResults.filter(result => result.matchType === 'likely')
+      case 'none': return allResults.filter(result => result.matchType === 'none')
+      default: return allResults
     }
   }
 
@@ -132,20 +128,20 @@ export const SearchResults = ({ data, user }: Props) => {
             key="playlistSelect"
             freeSolo
             autoSelect
-            onChange={(_e, value) => setSelectedPlaylist(value)}
+            onChange={(_e, value) => setSelectedPlaylist(value || undefined)}
             size='small'
-            disabled={!allResults.length}
+            disabled={allResults.length === 0}
             sx={{ width: 300 }}
-            options={playlists.map(playlist => playlist.name)}
+            options={allPlaylists.map(playlist => playlist.name)}
             renderInput={(params) =>
               <TextField {...params} label="Select or create a playlist" />
             }
           />,
-          <Tooltip key='addToSpotify' title={!selectedPlaylist ? 'A playlist must be selected.' : !selectedResults.length ? 'At least one search result must be selected.' : ''}>
+          <Tooltip key='addToSpotify' title={!selectedPlaylist ? 'A playlist must be selected.' : !allSelections.length ? 'At least one search result must be selected.' : ''}>
             <span>
               <Button
                 key="addToSpotify"
-                disabled={!selectedResults.length || !selectedPlaylist}
+                disabled={!allSelections.length || !selectedPlaylist}
                 // eslint-disable-next-line @typescript-eslint/no-misused-promises
                 onClick={addToSpotify}
                 variant="contained"
@@ -159,26 +155,36 @@ export const SearchResults = ({ data, user }: Props) => {
       />
       {allResults.length ?
         <>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'auto 1fr', marginBottom: '24px' }}>
+          <Box sx={{
+            display: 'grid',
+            gridTemplateColumns: 'auto 1fr',
+            padding: '24px 0',
+            marginTop: '-24px',
+            zIndex: 1,
+            position: 'sticky',
+            top: 0,
+            background: 'var(--mui-palette-background-default)'
+          }}>
             <ResultsFilterSelect
-              resultsCount={resultsCount}
+              allResults={allResults}
+              allSelections={allSelections}
               selected={resultsFilter}
               onSelect={filterResults}
             />
             <p style={{ alignSelf: 'end', textAlign: 'end', margin: 0 }}>
-              {selectedResults.length} of {allResults.length} selected
+              {allSelections.length}&nbsp;of&nbsp;{allResults.length} selected
             </p>
           </Box>
           <Box sx={{ display: 'flex', flexFlow: 'column', gap: '24px' }}>
-            {filteredResults.map(result =>
+            {(resultsFilter === 'all' ? allResults : allResults.filter(result => result.matchType === resultsFilter)).map(result =>
               <ResultDataTable
                 key={result.localFileMetadata.id}
                 data={result}
-                onSelect={updatedSelected}
-                selected={selectedResults.findIndex(selectedResults =>
+                onSelect={handleSelection}
+                selected={allSelections.findIndex(selectedResults =>
                   selectedResults.localFileMetadata.id === result.localFileMetadata.id) >= 0
                 }
-                status={!result.bestMatch ? 'error' : confidentMatchThreshold(result) ? 'success' : 'warning'}
+                status={!result.bestMatch ? 'error' : meetsConfidentMatchThreshold(result.bestMatch) ? 'success' : 'warning'}
               />
             )}
           </Box>

@@ -1,6 +1,6 @@
 import * as musicMetadata from 'music-metadata-browser'
 import { distance } from 'fastest-levenshtein'
-import { BestMatch, FilteredSpotifyTrack, LocalFileMetadata, SpotifyTracksForLocalFile } from '../types'
+import { BestMatch, FilteredSpotifyTrack, LocalFileMetadata, MatchType } from '../types'
 import { SpotifyTrack } from '../api'
 import { RESULT_INNACURACY_THRESHOLD } from '../constants'
 
@@ -40,7 +40,7 @@ export const filterSpotifyTrackInfo = (track: SpotifyTrack): FilteredSpotifyTrac
  * @param title Local metadata track title
  */
 export const filterLocalMetadataTrackTitle = (title: string): string => {
-  const result = title.replace(/[()[\]]/g, '')
+  const result = title.replace(/[()[\]'"{}]/g, '')
   return result.replace(/  +/g, ' ').trim()
 }
 
@@ -98,8 +98,17 @@ export const findBestMatch = (
 }
 
 /**
- * Check if a result meets the threshold to be considered a good match
+ * Check if a result meets the threshold to be considered a confident match
  */
-export const confidentMatchThreshold = (result: SpotifyTracksForLocalFile) => {
-  return !!result.bestMatch && result.bestMatch.differenceScore <= RESULT_INNACURACY_THRESHOLD
+export const meetsConfidentMatchThreshold = (bestMatch: BestMatch): boolean => {
+  return !!bestMatch && bestMatch.differenceScore <= RESULT_INNACURACY_THRESHOLD
+}
+
+/**
+ * Get the match type. Either 'confident', 'likely' or 'none'
+ */
+export const getMatchType = (bestMatch: BestMatch): MatchType => {
+  if (meetsConfidentMatchThreshold(bestMatch)) return 'confident'
+  else if (!bestMatch) return 'none'
+  else return 'likely'
 }

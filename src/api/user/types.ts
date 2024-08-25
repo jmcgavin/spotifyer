@@ -23,4 +23,4 @@ export type SpotifyUser = {
   product: string
   type: 'user'
   uri: string
-}
+} | undefined

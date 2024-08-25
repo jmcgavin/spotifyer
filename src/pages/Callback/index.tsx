@@ -46,8 +46,8 @@ const StyledHeader = styled.h1`
 `
 
 type Props = {
-  user: SpotifyUser | undefined,
-  setUser: Dispatch<SetStateAction<SpotifyUser | undefined>>
+  setUser: Dispatch<SetStateAction<SpotifyUser>>
+  user: SpotifyUser
 }
 
 export const Callback = ({ user, setUser }: Props) => {

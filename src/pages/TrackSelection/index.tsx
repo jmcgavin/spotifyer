@@ -59,7 +59,7 @@ export const TrackSelection = ({ data, onSetData }: Props) => {
             title={
               <>
                 <b>Step 2</b>:{' '}
-                {'Search Spotify for the audio files you selected.'}
+                {'Search Spotify for your audio files.'}
               </>
             }
             arrow
