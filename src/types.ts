@@ -4,6 +4,7 @@ export type LocalFileMetadata = {
   artist: string
   album: string
   year: string
+  duration?: number
 }
 
 export type FilteredSpotifyTrack = {
@@ -12,6 +13,7 @@ export type FilteredSpotifyTrack = {
   external_url: string
   spotify_uri: string
   artists: string[]
+  duration: number
   album: {
     name: string
     release_date: string

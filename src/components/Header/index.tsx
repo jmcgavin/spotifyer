@@ -15,12 +15,12 @@ export const Header = () => {
 
   return (
     <StyledHeader>
-      <Tooltip title={`Tun on ${colorMode === 'light' ? 'dark' : 'light'} mode`} disableInteractive>
+      <Tooltip title={`${colorMode === 'light' ? 'Dark' : 'Light'} mode`} disableInteractive>
         <IconButton onClick={() => setColorMode(colorMode === 'light' ? 'dark' : 'light')}>
           {colorMode === 'dark' ? <Brightness7 /> : <Brightness4 />}
         </IconButton>
       </Tooltip>
-      <Tooltip title="Visit GitHub repo" disableInteractive>
+      <Tooltip title="GitHub" disableInteractive>
         <IconButton onClick={() => window.open(GITHUB_REPO, '_blank')}>
           <GitHub />
         </IconButton>

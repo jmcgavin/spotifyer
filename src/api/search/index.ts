@@ -19,8 +19,7 @@ export const searchTracks = async ({
 }): Promise<SpotifyTrack[]> => {
   const queryString = createQueryString({
     q: searchQuery,
-    type: 'track',
-    limit: 5
+    type: 'track'
   })
 
   const response = await fetch(ENDPOINT + queryString, {

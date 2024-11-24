@@ -6,8 +6,8 @@ import { SpotifyPlaylist, SpotifyUser, addToPlaylist, createPlaylist, getPlaylis
 import { useLocalStorage } from '../../hooks'
 import { LOCALSTORAGE_KEYS } from '../../constants'
 import {
-  filterLocalMetadataTrackArtist,
-  filterLocalMetadataTrackTitle,
+  formatLocalMetadataTrackArtist,
+  formatLocalMetadataTrackTitle,
   filterSpotifyTrackInfo,
   findBestMatch,
   getMatchType,
@@ -48,23 +48,26 @@ export const SearchResults = ({ data, user }: Props) => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       (async () => {
         const searchResults: SpotifyTracksForLocalFile[] = []
-        await Promise.map(data, async (data) => {
-          const track = filterLocalMetadataTrackTitle(data.title)
-          const artist = filterLocalMetadataTrackArtist(data.artist)
+        await Promise.map(data, async (localFileMetadata) => {
+          const trackName = formatLocalMetadataTrackTitle(localFileMetadata.title)
+          console.log(trackName)
+          const artists = formatLocalMetadataTrackArtist(localFileMetadata.artist).join(' artist:')
           const tracks = await searchTracks({
-            searchQuery: `${track} artist:${artist}`,
+            searchQuery: `track:${trackName} artist:${artists}`,
             accessToken
           })
 
-          const bestMatch = findBestMatch(data, tracks.map(track => filterSpotifyTrackInfo(track)))
+          const bestMatch = findBestMatch(localFileMetadata, tracks.map(track => filterSpotifyTrackInfo(track)))
 
           searchResults.push({
-            localFileMetadata: data,
+            localFileMetadata,
             spotifyTracks: tracks.map(track => filterSpotifyTrackInfo(track)),
             bestMatch,
             matchType: getMatchType(bestMatch)
           })
         }, { concurrency: 5 })
+
+        console.log('search results', searchResults)
 
         setAllResults(searchResults)
         setAllSelections(searchResults.filter(result => result.matchType === 'confident'))
@@ -77,7 +80,7 @@ export const SearchResults = ({ data, user }: Props) => {
    * @param {SpotifyTracksForLocalFile} data Track to select/deselect
    * @param {boolean} selected Is the result selected?
    */
-  const handleSelection = (data:SpotifyTracksForLocalFile, selected:boolean) => {
+  const handleSelection = (data: SpotifyTracksForLocalFile, selected: boolean) => {
     if (selected) {
       setAllSelections([...allSelections, data])
     } else {
@@ -137,7 +140,7 @@ export const SearchResults = ({ data, user }: Props) => {
               <TextField {...params} label="Select or create a playlist" />
             }
           />,
-          <Tooltip key='addToSpotify' title={!selectedPlaylist ? 'A playlist must be selected.' : !allSelections.length ? 'At least one search result must be selected.' : ''}>
+          <Tooltip key='addToSpotify' title={!selectedPlaylist ? 'Select a playlist.' : !allSelections.length ? 'At least one search result must be selected.' : ''}>
             <span>
               <Button
                 key="addToSpotify"

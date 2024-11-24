@@ -10,6 +10,7 @@ import {
 } from '@mui/material'
 import styled from '@emotion/styled'
 import type { LocalFileMetadata } from '../../types'
+import { msToHMS } from '../../helpers'
 
 type Props = {
   data: LocalFileMetadata[]
@@ -60,7 +61,7 @@ export const TracksDataTable = ({ data, onReceiveFiles }: Props) => {
     e.preventDefault()
     if (dropZoneRef.current) {
       dropZoneRef.current?.classList.remove('active')
-      
+
       const files = e.dataTransfer.files
       const audioFiles = Array.from(files).filter(file => file.type.startsWith('audio/'))
 
@@ -69,12 +70,13 @@ export const TracksDataTable = ({ data, onReceiveFiles }: Props) => {
   }
 
   return (
-    <TableContainer component={Paper} data-mui-color-scheme='light'>
+    <TableContainer component={Paper} data-mui-color-scheme='light' sx={{ flexGrow: 1 }}>
       <Table size="small">
         <TableHead sx={{ backgroundColor: 'var(--mui-palette-primary-main)' }}>
           <TableRow>
             <TableCell></TableCell>
             <TableCell sx={{ color: 'var(--mui-palette-primary-contrastText)' }}><b>Title</b></TableCell>
+            <TableCell sx={{ color: 'var(--mui-palette-primary-contrastText)' }}><b>Time</b></TableCell>
             <TableCell sx={{ color: 'var(--mui-palette-primary-contrastText)' }}><b>Artist</b></TableCell>
             <TableCell sx={{ color: 'var(--mui-palette-primary-contrastText)' }}><b>Album</b></TableCell>
             <TableCell sx={{ color: 'var(--mui-palette-primary-contrastText)' }}><b>Year</b></TableCell>
@@ -82,10 +84,11 @@ export const TracksDataTable = ({ data, onReceiveFiles }: Props) => {
         </TableHead>
         <TableBody>
           {data.length ? (
-            data.map((row, id) => (
+            data.map((row, index) => (
               <TableRow key={row.id} sx={{ '&:last-child td': { border: 0 } }}>
-                <TableCell>{id + 1}</TableCell>
+                <TableCell>{index + 1}</TableCell>
                 <TableCell>{row.title}</TableCell>
+                <TableCell>{row.duration && msToHMS(row.duration)}</TableCell>
                 <TableCell>{row.artist}</TableCell>
                 <TableCell>{row.album}</TableCell>
                 <TableCell>{row.year}</TableCell>
@@ -95,7 +98,7 @@ export const TracksDataTable = ({ data, onReceiveFiles }: Props) => {
             <TableRow>
               <DropZone
                 ref={dropZoneRef}
-                colSpan={5}
+                colSpan={6}
                 onDragEnter={e => dragEnter(e)}
                 onDragOver={e => dragOver(e)}
                 onDragLeave={e => dragLeave(e)}

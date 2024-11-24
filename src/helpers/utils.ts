@@ -42,3 +42,26 @@ export const createQueryString = (params: Record<string, string | number>) => {
     .join('&')
   return '?' + queryString
 }
+
+/**
+ * Convert MS to time in HH:MM:SS format
+ * @param ms Time in milliseconds
+ */
+export const msToHMS = (ms: number) => {
+  let seconds = Math.floor(ms / 1000)
+  let minutes = Math.floor(seconds / 60)
+  let hours = Math.floor(minutes / 60)
+
+  seconds = seconds % 60
+  minutes = minutes % 60
+
+  let timeString = ''
+
+  if (hours > 0) {
+    timeString += hours + ':'
+  }
+
+  timeString += minutes + ':' + (seconds < 10 ? '0' : '') + seconds
+
+  return timeString
+}

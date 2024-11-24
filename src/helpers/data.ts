@@ -1,21 +1,22 @@
-import * as musicMetadata from 'music-metadata-browser'
+import { parseBlob } from 'music-metadata'
 import { distance } from 'fastest-levenshtein'
 import { BestMatch, FilteredSpotifyTrack, LocalFileMetadata, MatchType } from '../types'
 import { SpotifyTrack } from '../api'
 import { RESULT_INNACURACY_THRESHOLD } from '../constants'
 
 /**
- * Parse an audio file and extract metadata: title, artist, album, year
+ * Parse an audio file and extract metadata: title, artist, album, year, duration (ms)
  * @param file Audio file to parse
  */
 export const parseFile = async (file: File): Promise<LocalFileMetadata> => {
-  const { common } = await musicMetadata.parseBlob(file, { skipCovers: true })
+  const { common, format } = await parseBlob(file, { skipCovers: true, duration: true })
   return {
     id: crypto.randomUUID(),
     title: common.title || '',
     artist: common.artist || '',
     album: common.album || '',
-    year: common.year ? common.year.toString() : ''
+    year: common.year ? common.year.toString() : '',
+    duration: format.duration && format.duration * 1000
   }
 }
 
@@ -29,6 +30,7 @@ export const filterSpotifyTrackInfo = (track: SpotifyTrack): FilteredSpotifyTrac
   spotify_uri: track.uri,
   external_url: track.external_urls.spotify,
   artists: track.artists.map(artist => artist.name),
+  duration: track.duration_ms,
   album: {
     name: track.album.name,
     release_date: track.album.release_date.substring(0, 4)
@@ -36,21 +38,23 @@ export const filterSpotifyTrackInfo = (track: SpotifyTrack): FilteredSpotifyTrac
 })
 
 /**
- * Filter a local track's title to remove unwanted characters
+ * Format a local track's title to remove unwanted characters
  * @param title Local metadata track title
  */
-export const filterLocalMetadataTrackTitle = (title: string): string => {
+export const formatLocalMetadataTrackTitle = (title: string): string => {
   const result = title.replace(/[()[\]'"{}]/g, '')
   return result.replace(/  +/g, ' ').trim()
 }
 
 /**
- * Filter a local track's artist to remove unwanted characters
+ * Format a local track's artist to remove unwanted characters and split into array of individual artists
  * @param title Local metadata track title
  */
-export const filterLocalMetadataTrackArtist = (artist: string): string => {
-  const result = artist.replace(/\sfeaturing|\sfeat|\sft|\svs|\sand|\s&|,|\./gi, ' ')
-  return result.replace(/  +/g, ' ').trim()
+export const formatLocalMetadataTrackArtist = (artist: string): string[] => {
+  const splitCharacter = '_-_'
+  const result = artist.replace(/\sfeaturing|\sfeat|\sft|\svs|\sand|\s&|,|\./gi, splitCharacter)
+  const artists = result.split(splitCharacter).filter(artist => artist.length)
+  return artists.map(artist => artist.replace(/  +/g, ' ').trim())
 }
 
 /**
@@ -70,8 +74,8 @@ export const findBestMatch = (
     const spotifyTitle = spotifyTracks[i].name.toLowerCase()
     const spotifyAlbum = spotifyTracks[i].album.name.toLowerCase()
 
-    const localArtist = filterLocalMetadataTrackArtist(localFileMetadata.artist).toLowerCase()
-    const localTitle = filterLocalMetadataTrackTitle(localFileMetadata.title).toLowerCase()
+    const localArtist = formatLocalMetadataTrackArtist(localFileMetadata.artist).join(' ').toLowerCase()
+    const localTitle = formatLocalMetadataTrackTitle(localFileMetadata.title).toLowerCase()
     const localAlbum = localFileMetadata.album.toLowerCase()
 
     const artistDifference = (distance(localArtist, spotifyArtist)) / spotifyArtist.length

@@ -11,6 +11,7 @@ import {
 } from '@mui/material'
 import styled from '@emotion/styled'
 import type { SpotifyTracksForLocalFile } from '../../types'
+import { msToHMS } from '../../helpers'
 
 type Props = {
   data: SpotifyTracksForLocalFile
@@ -56,6 +57,7 @@ export const ResultDataTable = ({ data, onSelect, selected, status }: Props) => 
               />
             </TableCell>
             <TableCell width={'40%'}><b>Title</b></TableCell>
+            <TableCell width={'100px'}><b>Time</b></TableCell>
             <TableCell width={'30%'}><b>Artist</b></TableCell>
             <TableCell width={'30%'}><b>Album</b></TableCell>
             <TableCell width={'80px'}><b>Year</b></TableCell>
@@ -65,6 +67,7 @@ export const ResultDataTable = ({ data, onSelect, selected, status }: Props) => 
           <StyledTableRow className={status}>
             <TableCell><b>Local</b></TableCell>
             <TableCell>{data.localFileMetadata.title}</TableCell>
+            <TableCell>{data.localFileMetadata.duration && msToHMS(data.localFileMetadata.duration)}</TableCell>
             <TableCell>{data.localFileMetadata.artist}</TableCell>
             <TableCell>{data.localFileMetadata.album}</TableCell>
             <TableCell>{data.localFileMetadata.year}</TableCell>
@@ -83,15 +86,16 @@ export const ResultDataTable = ({ data, onSelect, selected, status }: Props) => 
                   </Link>
                 </TableCell>
                 <TableCell>{data.spotifyTracks[data.bestMatch.index].name}</TableCell>
+                <TableCell>{msToHMS(data.spotifyTracks[data.bestMatch.index].duration)}</TableCell>
                 <TableCell>{data.spotifyTracks[data.bestMatch.index].artists.join(', ')}</TableCell>
                 <TableCell>{data.spotifyTracks[data.bestMatch.index].album.name}</TableCell>
                 <TableCell>{data.spotifyTracks[data.bestMatch.index].album.release_date}</TableCell>
               </StyledTableRow>
-            :
-            <StyledTableRow className={status}>
-              <TableCell><b>Spotify</b></TableCell>
-              <TableCell colSpan={4} sx={{ color: 'var(--mui-palette-text-disabled)' }}>No match found</TableCell>
-            </StyledTableRow>
+              :
+              <StyledTableRow className={status}>
+                <TableCell><b>Spotify</b></TableCell>
+                <TableCell colSpan={4} sx={{ color: 'var(--mui-palette-text-disabled)' }}>No match found</TableCell>
+              </StyledTableRow>
           }
         </TableBody>
       </Table>

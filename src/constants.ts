@@ -7,7 +7,7 @@ export const ROUTES = {
 
 export const REDIRECT_URL = `https://localhost:5173${ROUTES.CALLBACK}`
 
-export const GITHUB_REPO = 'https://github.com/jmcgavin'
+export const GITHUB_REPO = 'https://github.com/jmcgavin/spotifyer'
 
 export const LOCALSTORAGE_KEYS = {
   SPOTIFY_ACCESS_TOKEN: 'spotify_access_token',
